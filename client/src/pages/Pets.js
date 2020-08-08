@@ -1,9 +1,9 @@
-import React, {useState} from 'react'
-import gql from 'graphql-tag'
-import { useQuery, useMutation } from '@apollo/react-hooks'
-import PetsList from '../components/PetsList'
-import NewPetModal from '../components/NewPetModal'
-import Loader from '../components/Loader'
+import React, { useState } from "react";
+import gql from "graphql-tag";
+import { useQuery, useMutation } from "@apollo/react-hooks";
+import PetsList from "../components/PetsList";
+import NewPetModal from "../components/NewPetModal";
+import Loader from "../components/Loader";
 
 const GET_PETS = gql`
   query getPets {
@@ -16,25 +16,48 @@ const GET_PETS = gql`
   }
 `;
 
-export default function Pets () {
+const NEW_PETS = gql`
+  mutation CreateAPet($newPet: NewPetInput!) {
+    addPet(input: $newPet) {
+      id
+      name
+      type
+      img
+    }
+  }
+`;
+
+export default function Pets() {
   const [modal, setModal] = useState(false)
   const { loading, error, data } = useQuery(GET_PETS);
-
-  const onSubmit = input => {
-    setModal(false)
-  }
-
-
-   if (loading) {
-     return <Loader />;
-  }
+  const [createPet, newPet] = useMutation(NEW_PETS, {
+    update(cache, { data: { addPet } }) {
+      const data = cache.readQuery({ query: GET_PETS });
+      cache.writeQuery({
+          query: GET_PETS,
+          data: { pets: [addPet, ...data.pets] },
+        });
+      }
+    }
+  );
   
+  const onSubmit = (input) => {
+    setModal(false);
+    createPet({
+      variables: { newPet: input },
+    })
+  };
+
+  if (loading) {
+    return <Loader />;
+  }
+
   if (error) {
     return <p>Error 404</p>;
   }
-  
+
   if (modal) {
-    return <NewPetModal onSubmit={onSubmit} onCancel={() => setModal(false)} />
+    return <NewPetModal onSubmit={onSubmit} onCancel={() => setModal(false)} />;
   }
 
   return (
@@ -51,8 +74,8 @@ export default function Pets () {
         </div>
       </section>
       <section>
-        <PetsList pets={data.pets}/>
+        <PetsList pets={data.pets} />
       </section>
     </div>
-  )
+  );
 }
